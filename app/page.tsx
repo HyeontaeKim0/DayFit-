@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import WeekCalendar from "@/components/WeekCalendar";
+import CalendarApp from "@/components/CalendarApp";
 import { mockEvents } from "@/lib/mock";
 
 export default function Home() {
@@ -9,15 +9,13 @@ export default function Home() {
         <span className="text-xl font-bold">DayFit</span>
       </header>
       <main className="flex-1 p-6">
-        <div className="rounded-xl border bg-white p-4">
-          <Suspense
-            fallback={
-              <div className="h-[640px] animate-pulse rounded-lg bg-neutral-100" />
-            }
-          >
-            <WeekCalendar events={mockEvents} />
-          </Suspense>
-        </div>
+        <Suspense
+          fallback={
+            <div className="h-[700px] animate-pulse rounded-xl bg-neutral-100" />
+          }
+        >
+          <CalendarApp initialEvents={mockEvents} />
+        </Suspense>
       </main>
     </div>
   );

@@ -42,3 +42,42 @@ export function formatTime(iso: string): string {
   const { hour, minute } = toKstParts(iso);
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
+
+export type KstDate = {
+  year: number;
+  month: number;
+  day: number;
+  dayIndex: number;
+};
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  weekday: "short",
+});
+
+/** 주어진 시각의 한국 날짜 */
+export function toKstDate(date: Date): KstDate {
+  const parts = dateFormatter.formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")),
+    day: Number(get("day")),
+    dayIndex: WEEKDAY_INDEX[get("weekday")],
+  };
+}
+
+/** 한국 날짜에서 days일 뒤 */
+export function addKstDays(base: KstDate, days: number): KstDate {
+  const utcNoon = Date.UTC(base.year, base.month - 1, base.day + days, 3); // KST 12시
+  return toKstDate(new Date(utcNoon));
+}
+
+/** 한국 날짜 + 시·분 → "+09:00"이 붙은 ISO 문자열 */
+export function kstIso(date: KstDate, hour: number, minute = 0): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.year}-${pad(date.month)}-${pad(date.day)}T${pad(hour)}:${pad(minute)}:00+09:00`;
+}
