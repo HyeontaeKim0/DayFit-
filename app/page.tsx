@@ -76,7 +76,8 @@ export default function Home() {
         <ul className="mt-6 space-y-1 text-sm text-neutral-600">
           {mockEvents.map((event) => (
             <li key={event.id}>
-              {event.title} · {event.startAt} – {event.endAt}
+              {event.title} · {event.startAt.slice(0, 16).replace("T", " ")} –{" "}
+              {event.endAt.slice(0, 16).replace("T", " ")}{" "}
             </li>
           ))}
         </ul>
