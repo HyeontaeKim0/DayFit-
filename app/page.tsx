@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import CalendarApp from "@/components/CalendarApp";
-import { mockEvents } from "@/lib/mock";
 
 export default function Home() {
   return (
@@ -14,7 +13,7 @@ export default function Home() {
             <div className="h-[700px] animate-pulse rounded-xl bg-neutral-100" />
           }
         >
-          <CalendarApp initialEvents={mockEvents} />
+          <CalendarApp />
         </Suspense>
       </main>
     </div>
