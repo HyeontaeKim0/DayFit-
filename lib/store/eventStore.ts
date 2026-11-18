@@ -30,6 +30,8 @@ type EventState = {
   updateEvent: (id: string, changes: EventChanges) => void;
   deleteEvent: (id: string, mode?: DeleteMode) => void;
   setStatus: (id: string, status: EventStatus) => void;
+  /** 여러 일정의 상태를 set 한 번으로 바꾼다 (하루 확인 팝업의 "저장") */
+  setStatuses: (changes: { id: string; status: EventStatus }[]) => void;
   /** 원래 일정은 postponed로 남기고, 새 시간에 planned 일정을 만들어 rescheduledFromId로 연결 */
   postpone: (id: string, newStartAt: string, newEndAt: string) => void;
 };
@@ -101,6 +103,16 @@ export const useEventStore = create<EventState>()((set, get) => ({
       events: state.events.map((event) =>
         event.id === id ? { ...event, status } : event,
       ),
+    }));
+  },
+
+  setStatuses: (changes) => {
+    const next = new Map(changes.map((c) => [c.id, c.status]));
+    set((state) => ({
+      events: state.events.map((event): Event => {
+        const status = next.get(event.id);
+        return status ? { ...event, status } : event;
+      }),
     }));
   },
 
