@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import CalendarApp from "@/components/CalendarApp";
+import CalendarApp from "@/components/calendar/CalendarApp";
 
 export default function Home() {
   return (

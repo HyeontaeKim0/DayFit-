@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { mockEvents } from "@/lib/mock";
+import { mockEvents } from "@/lib/event/mock";
 import type { Event, EventStatus } from "@/lib/types";
 
 /** 새 일정을 만들 때 받는 값. id·status 등은 스토어가 채운다. */
@@ -10,9 +10,9 @@ export type NewEventInput = {
   categoryId?: string | null;
 };
 
-/** 수정할 수 있는 필드 */
+/** 수정할 수 있는 필드 (팝업의 "저장"에서 제목·시간·상태를 한 번에 반영) */
 export type EventChanges = Partial<
-  Pick<Event, "title" | "startAt" | "endAt" | "categoryId">
+  Pick<Event, "title" | "startAt" | "endAt" | "categoryId" | "status">
 >;
 
 /**

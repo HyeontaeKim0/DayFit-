@@ -81,3 +81,40 @@ export function kstIso(date: KstDate, hour: number, minute = 0): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.year}-${pad(date.month)}-${pad(date.day)}T${pad(hour)}:${pad(minute)}:00+09:00`;
 }
+
+const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+
+/** "11월 19일 (목)" */
+export function formatKstDate(iso: string): string {
+  const d = toKstDate(new Date(iso));
+  return `${d.month}월 ${d.day}일 (${DAY_LABELS[d.dayIndex]})`;
+}
+
+/** "11/19 (목) 21:00" */
+export function formatKstShort(iso: string): string {
+  const d = toKstDate(new Date(iso));
+  return `${d.month}/${d.day} (${DAY_LABELS[d.dayIndex]}) ${formatTime(iso)}`;
+}
+
+/** ISO → <input type="date">, <input type="time">에 넣을 한국 시간 값 */
+export function toKstInputs(iso: string): { date: string; time: string } {
+  const d = toKstDate(new Date(iso));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    date: `${d.year}-${pad(d.month)}-${pad(d.day)}`,
+    time: formatTime(iso),
+  };
+}
+
+/** 입력값(한국 시간) → "+09:00"이 붙은 ISO */
+export function fromKstInputs(date: string, time: string): string {
+  return `${date}T${time}:00+09:00`;
+}
+
+/** 한국 날짜 문자열(YYYY-MM-DD)에서 days일 뒤 */
+export function addDaysToDateInput(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const next = addKstDays({ year: y, month: m, day: d, dayIndex: 0 }, days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${next.year}-${pad(next.month)}-${pad(next.day)}`;
+}

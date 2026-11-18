@@ -1,5 +1,5 @@
 //가짜 일정 Event 데이터 생성
-import type { Event } from "./types";
+import type { Event } from "@/lib/types";
 export const mockEvents: Event[] = [
   {
     id: "1",
