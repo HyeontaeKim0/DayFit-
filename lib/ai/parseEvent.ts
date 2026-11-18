@@ -43,24 +43,47 @@ function fakeParse(text: string, now: Date): ParsedEvent {
     rest = rest.replace(weekday[0], "");
   }
 
-  // 시각: (오전|오후) N시 (M분|반)
-  let hour = 9;
-  let minute = 0;
-  const time = rest.match(/(오전|오후)?\s*(\d{1,2})시\s*(?:(\d{1,2})분|(반))?/);
-  if (time) {
-    hour = Number(time[2]);
-    if (time[1] === "오후" && hour < 12) hour += 12;
-    if (!time[1] && hour >= 1 && hour <= 7) hour += 12; // "3시"는 보통 오후
-    minute = time[4] ? 30 : Number(time[3] ?? 0);
-    rest = rest.replace(time[0], "");
-  }
+  // 시각 하나: (오전|오후) N시 (M분|반)
+  const TIME = "(오전|오후)?\\s*(\\d{1,2})시\\s*(?:(\\d{1,2})분|(반))?";
+  const toMinutes = (
+    ampm: string | undefined,
+    h: string,
+    m: string | undefined,
+    half: string | undefined,
+  ) => {
+    let hh = Number(h);
+    if (ampm === "오후" && hh < 12) hh += 12;
+    if (!ampm && hh >= 1 && hh <= 7) hh += 12; // "3시"는 보통 오후
+    return hh * 60 + (half ? 30 : Number(m ?? 0));
+  };
 
-  // 길이: N시간 / N분 (기본 1시간)
+  let startTotal = 9 * 60;
   let durationMin = 60;
-  const duration = rest.match(/(\d+)\s*(시간|분)\s*(동안)?/);
-  if (duration) {
-    durationMin = Number(duration[1]) * (duration[2] === "시간" ? 60 : 1);
-    rest = rest.replace(duration[0], "");
+
+  // 범위: "10시부터 2시까지", "오전 10시 ~ 오후 2시"
+  const range = rest.match(
+    new RegExp(`${TIME}\\s*(?:부터|에서|~|-)\\s*${TIME}\\s*(?:까지)?`),
+  );
+  if (range) {
+    startTotal = toMinutes(range[1], range[2], range[3], range[4]);
+    let endTotal = toMinutes(range[5], range[6], range[7], range[8]);
+    // "오전 10시부터 2시까지"처럼 끝에 오전/오후가 없고 시작보다 이르면 오후로 본다
+    if (!range[5] && endTotal <= startTotal && endTotal + 12 * 60 > startTotal)
+      endTotal += 12 * 60;
+    durationMin = Math.max(endTotal - startTotal, 15);
+    rest = rest.replace(range[0], "");
+  } else {
+    const time = rest.match(new RegExp(TIME));
+    if (time) {
+      startTotal = toMinutes(time[1], time[2], time[3], time[4]);
+      rest = rest.replace(time[0], "");
+    }
+    // 길이: N시간 / N분 (기본 1시간)
+    const duration = rest.match(/(\d+)\s*(시간|분)\s*(동안)?/);
+    if (duration) {
+      durationMin = Number(duration[1]) * (duration[2] === "시간" ? 60 : 1);
+      rest = rest.replace(duration[0], "");
+    }
   }
 
   const title =
@@ -68,10 +91,12 @@ function fakeParse(text: string, now: Date): ParsedEvent {
       .replace(/\s*(에|에서|부터|까지)\s/g, " ")
       .replace(/(일정\s*)?(추가|잡아줘|넣어줘|해줘)/g, "")
       .replace(/\s+/g, " ")
-      .trim() || "새 일정";
+      .trim()
+      .replace(/^일정$/, "") || "새 일정";
 
   const date = addKstDays(today, offset);
-  const startTotal = hour * 60 + minute;
+  const hour = Math.floor(startTotal / 60);
+  const minute = startTotal % 60;
   const endTotal = startTotal + durationMin;
   const endDate = addKstDays(date, Math.floor(endTotal / 1440));
 
