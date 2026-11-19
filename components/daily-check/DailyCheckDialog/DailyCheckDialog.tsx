@@ -8,7 +8,9 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { changeProposalSchema } from "@/lib/ai/schema";
 import { useEventStore } from "@/lib/store/eventStore";
+import { useProposalStore } from "@/lib/store/proposalStore";
 import { formatKstShort, formatTime } from "@/lib/time";
 import type { Event } from "@/lib/types";
 
@@ -42,6 +44,9 @@ export default function DailyCheckDialog({
 
 function Body({ pending, missedCount, onClose }: Omit<Props, "open">) {
   const setStatuses = useEventStore((s) => s.setStatuses);
+  const events = useEventStore((s) => s.events);
+  const openProposal = useProposalStore((s) => s.open);
+  const [requesting, setRequesting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const answered = Object.keys(answers).length;
@@ -51,6 +56,32 @@ function Body({ pending, missedCount, onClose }: Omit<Props, "open">) {
       Object.entries(answers).map(([id, status]) => ({ id, status })),
     );
     setAnswers({});
+  }
+
+  /** "재배치": AI에게 변경안을 받아 미리보기 팝업에 올린다 (승인 전에는 일정이 안 바뀐다) */
+  async function handleReschedule() {
+    if (requesting) return;
+    setRequesting(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/propose-reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "변경안을 받지 못했어요.");
+      // 서버가 이미 검사했지만, 응답 형식이 어긋나면 기술 문구 대신 고정 문구를 보여준다
+      const proposal = changeProposalSchema.safeParse(data);
+      if (!proposal.success)
+        throw new Error("변경안을 만들지 못했어요. 잠시 뒤 다시 시도해주세요.");
+      openProposal(proposal.data);
+      onClose();
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "변경안을 받지 못했어요.");
+    } finally {
+      setRequesting(false);
+    }
   }
 
   return (
@@ -109,9 +140,10 @@ function Body({ pending, missedCount, onClose }: Omit<Props, "open">) {
           </p>
           <Button
             variant="outline"
-            onClick={() => setNotice("AI 재배치는 준비 중이에요.")}
+            onClick={handleReschedule}
+            disabled={requesting}
           >
-            재배치
+            {requesting ? "변경안 만드는 중…" : "재배치"}
           </Button>
         </div>
       )}

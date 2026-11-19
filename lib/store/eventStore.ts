@@ -1,5 +1,12 @@
 import { create } from "zustand";
+import type { ProposedChange } from "@/lib/ai/schema";
 import { mockEvents } from "@/lib/event/mock";
+import {
+  applyChangesToList,
+  postponeInList,
+  validateProposal,
+  type ApplyResult,
+} from "@/lib/event/proposal";
 import type { Event, EventStatus } from "@/lib/types";
 
 /** 새 일정을 만들 때 받는 값. id·status 등은 스토어가 채운다. */
@@ -34,6 +41,12 @@ type EventState = {
   setStatuses: (changes: { id: string; status: EventStatus }[]) => void;
   /** 원래 일정은 postponed로 남기고, 새 시간에 planned 일정을 만들어 rescheduledFromId로 연결 */
   postpone: (id: string, newStartAt: string, newEndAt: string) => void;
+  /**
+   * 승인된 변경안을 전부 적용한다 (all or nothing).
+   * 먼저 전체를 검증하고, 하나라도 안 되면 set을 호출하지 않고 이유를 돌려준다.
+   * 통과하면 set 한 번으로 반영해서 중간 상태가 생기지 않는다.
+   */
+  applyProposal: (changes: ProposedChange[]) => ApplyResult;
 };
 
 const USER_ID = "user_123"; // 로그인 붙이기 전 임시
@@ -117,27 +130,18 @@ export const useEventStore = create<EventState>()((set, get) => ({
   },
 
   postpone: (id, newStartAt, newEndAt) => {
-    const original = get().events.find((event) => event.id === id);
-    if (!original) return;
-
-    const newEvent: Event = {
-      id: crypto.randomUUID(),
-      title: original.title,
-      startAt: newStartAt,
-      endAt: newEndAt,
-      status: "planned",
-      userId: USER_ID,
-      categoryId: original.categoryId ?? null,
-      rescheduledFromId: id,
-    };
-
+    if (!get().events.some((event) => event.id === id)) return;
     set((state) => ({
-      events: [
-        ...state.events.map((event): Event =>
-          event.id === id ? { ...event, status: "postponed" } : event,
-        ),
-        newEvent,
-      ],
+      events: postponeInList(state.events, id, newStartAt, newEndAt),
     }));
+  },
+
+  applyProposal: (changes) => {
+    const result = validateProposal(get().events, changes);
+    if (!result.ok) return result;
+    set((state) => ({
+      events: applyChangesToList(state.events, changes, USER_ID),
+    }));
+    return result;
   },
 }));
